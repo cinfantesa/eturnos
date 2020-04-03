@@ -1,10 +1,9 @@
+import 'package:eturnos/registration/turn.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-enum RegisterAction { startWorkDay, finishWorkDay }
-
 class RegistrationPage extends StatefulWidget {
-  RegistrationPage({ Key key, this.title }) : super(key: key);
+  RegistrationPage({Key key, this.title}) : super(key: key);
 
   final String title;
 
@@ -13,49 +12,78 @@ class RegistrationPage extends StatefulWidget {
 }
 
 class _RegistrationPageState extends State<RegistrationPage> {
-  DateTime _startWorkDayTime;
-  DateTime _finishWorkDayTime;
-  RegisterAction _selected;
-  int _elapsedTime;
+  List<Turn> _actions = <Turn>[];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: Text(widget.title),
-        ),
-        body: Center(
-          child: _buildBody(),
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: _toggleAction,
-          child: Icon(Icons.access_time),
-        ),
+      appBar: AppBar(
+        title: Text(widget.title),
+        actions: <Widget>[      // Add 3 lines from here...
+          IconButton(icon: Icon(Icons.list), onPressed: _showActions),
+        ],
+      ),
+      body: Center(
+        child: _buildBody(),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _toggleAction,
+        child: Icon(Icons.access_time),
+      ),
     );
   }
 
   Widget _buildBody() {
-    if (_selected == null) {
+    if (_actions.isEmpty) {
       return new Text('');
     }
 
-    if (_selected == RegisterAction.startWorkDay) {
-      return new Text('Iniciaste jornada a las $_startWorkDayTime');
+    DateTime time = _actions.last.time;
+
+    if (_actions.last.type == ActionType.startWorkDay) {
+      return new Text('Jornada iniciada a las $time');
     }
 
-    return new Text('Finalizaste jornada a las $_finishWorkDayTime, has estado trabajando $_elapsedTime segundos');
+    return new Text('Jornada finalizada a las $time');
   }
 
   _toggleAction() {
     setState(() {
-      if (_selected == RegisterAction.startWorkDay) {
-        _selected = RegisterAction.finishWorkDay;
-        _finishWorkDayTime = new DateTime.now();
-        _elapsedTime = _finishWorkDayTime.difference(_startWorkDayTime).inSeconds;
+      bool hasToStartWorkDay = _actions.isEmpty || _actions.last.isFinishWorkDay();
+
+      if (hasToStartWorkDay) {
+        _actions.add(new Turn(ActionType.startWorkDay));
       } else {
-        _selected = RegisterAction.startWorkDay;
-        _startWorkDayTime = new DateTime.now();
+        _actions.add(new Turn(ActionType.finishWorkDay));
       }
     });
+  }
+
+  _showActions() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (BuildContext context) {
+          final Iterable<ListTile> tiles = _actions.map(
+                (Turn turn) => ListTile(
+                  title: Text(turn.type.toString()),
+                  subtitle: Text(turn.time.toIso8601String()),
+                ),
+          );
+          final List<Widget> divided = ListTile
+              .divideTiles(
+            context: context,
+            tiles: tiles,
+          )
+              .toList();
+
+          return Scaffold(         // Add 6 lines from here...
+            appBar: AppBar(
+              title: Text('Registros guardados'),
+            ),
+            body: ListView(children: divided),
+          );                       // ... to here.
+        },
+      ),
+    );
   }
 }
